@@ -1,0 +1,31 @@
+[project]
+name = "searchrl"
+version = "0.1.0"
+description = "Reinforcement Learning for Agentic Document Retrieval"
+requires-python = ">=3.10"
+dependencies = [
+    "torch>=2.1.0",
+    "gymnasium>=0.29.0",
+    "sentence-transformers>=2.2.0",
+    "transformers>=4.35.0",
+    "datasets>=2.15.0",
+    "faiss-cpu>=1.7.4",
+    "numpy>=1.24.0",
+    "tensorboard>=2.15.0",
+    "tqdm>=4.66.0",
+    "scipy>=1.11.0",
+    "accelerate>=0.25.0",
+    "beir>=2.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=7.4.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]
+

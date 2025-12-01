@@ -1,0 +1,83 @@
+from dataclasses import dataclass, field
+from typing import Optional
+from pathlib import Path
+
+
+@dataclass
+class RetrieverConfig:
+    model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
+    index_path: Optional[Path] = None
+    top_k: int = 10
+    embedding_dim: int = 384
+
+
+@dataclass
+class PolicyConfig:
+    hidden_dim: int = 256
+    gru_layers: int = 1
+    action_dim: int = 4
+    embedding_dim: int = 384
+    dropout: float = 0.1
+
+
+@dataclass
+class PPOConfig:
+    lr: float = 3e-4
+    gamma: float = 0.99
+    gae_lambda: float = 0.95
+    clip_epsilon: float = 0.2
+    value_coef: float = 0.5
+    entropy_coef: float = 0.01
+    max_grad_norm: float = 0.5
+    batch_size: int = 64
+    epochs_per_update: int = 4
+    rollout_steps: int = 2048
+
+
+@dataclass
+class EnvConfig:
+    max_steps: int = 5
+    reward_scale: float = 1.0
+
+
+@dataclass
+class RewardConfig:
+    model_name: str = "Qwen/Qwen2.5-3B-Instruct"
+    max_length: int = 512
+    batch_size: int = 8
+    temperature: float = 0.1
+
+
+@dataclass
+class ReformulatorConfig:
+    model_name: str = "Qwen/Qwen2.5-3B-Instruct"
+    max_new_tokens: int = 128
+    temperature: float = 0.7
+
+
+@dataclass
+class QueryGenConfig:
+    model_name: str = "Qwen/Qwen2.5-3B-Instruct"
+    queries_per_doc: int = 3
+    batch_size: int = 4
+
+
+@dataclass
+class TrainConfig:
+    retriever: RetrieverConfig = field(default_factory=RetrieverConfig)
+    policy: PolicyConfig = field(default_factory=PolicyConfig)
+    ppo: PPOConfig = field(default_factory=PPOConfig)
+    env: EnvConfig = field(default_factory=EnvConfig)
+    reward: RewardConfig = field(default_factory=RewardConfig)
+    reformulator: ReformulatorConfig = field(default_factory=ReformulatorConfig)
+    query_gen: QueryGenConfig = field(default_factory=QueryGenConfig)
+    
+    total_episodes: int = 10000
+    eval_interval: int = 500
+    save_interval: int = 1000
+    log_dir: Path = field(default_factory=lambda: Path("runs"))
+    checkpoint_dir: Path = field(default_factory=lambda: Path("checkpoints"))
+    dataset_name: str = "nfcorpus"
+    device: str = "cuda"
+    seed: int = 42
+
