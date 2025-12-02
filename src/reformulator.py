@@ -1,6 +1,7 @@
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from typing import List, Dict, Optional
+from .utils import get_device, get_dtype, optimize_for_metal
 
 
 NARROW_PROMPT = """Given a search query and the top retrieved results, rewrite the query to be more specific and focused.
@@ -28,17 +29,38 @@ class Reformulator:
         self,
         model_name: str = "Qwen/Qwen2.5-3B-Instruct",
         device: str = "cuda",
-        max_new_tokens: int = 128
+        max_new_tokens: int = 128,
+        use_quantization: bool = False
     ):
-        self.device = device
+        self.device = get_device(device)
         self.max_new_tokens = max_new_tokens
+        dtype = get_dtype(self.device)
+        
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            torch_dtype=torch.float16,
-            device_map=device,
-            trust_remote_code=True
-        )
+        
+        load_kwargs = {
+            "torch_dtype": dtype,
+            "trust_remote_code": True
+        }
+        
+        if self.device == "mps":
+            load_kwargs["device_map"] = None
+        else:
+            load_kwargs["device_map"] = self.device
+        
+        if use_quantization and self.device != "mps":
+            from transformers import BitsAndBytesConfig
+            load_kwargs["quantization_config"] = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_compute_dtype=dtype
+            )
+        
+        self.model = AutoModelForCausalLM.from_pretrained(model_name, **load_kwargs)
+        
+        if self.device == "mps":
+            self.model = self.model.to(self.device)
+            self.model = optimize_for_metal(self.model, self.device)
+        
         self.model.eval()
     
     def _format_results(self, documents: List[Dict], max_docs: int = 3) -> str:

@@ -40,6 +40,7 @@ def evaluate(
     num_queries: int = 200
 ):
     config = TrainConfig(dataset_name=dataset_name, device=device)
+    config.optimize_for_device()
     
     corpus, queries, qrels = load_beir_dataset(dataset_name)
     

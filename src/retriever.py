@@ -5,6 +5,7 @@ from sentence_transformers import SentenceTransformer
 from typing import List, Dict, Tuple, Optional
 from pathlib import Path
 from dataclasses import dataclass
+from .utils import get_device, optimize_for_metal
 
 
 @dataclass
@@ -21,8 +22,10 @@ class Retriever:
         model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
         device: str = "cuda"
     ):
-        self.device = device
-        self.encoder = SentenceTransformer(model_name, device=device)
+        self.device = get_device(device)
+        self.encoder = SentenceTransformer(model_name, device=self.device)
+        if self.device == "mps":
+            self.encoder = optimize_for_metal(self.encoder, self.device)
         self.index: Optional[faiss.Index] = None
         self.doc_ids: List[str] = []
         self.documents: Dict[str, Dict] = {}

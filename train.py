@@ -39,13 +39,15 @@ def setup_components(config: TrainConfig, corpus, train_queries):
     reward_model = RewardModel(
         model_name=config.reward.model_name,
         device=config.device,
-        max_length=config.reward.max_length
+        max_length=config.reward.max_length,
+        use_quantization=config.reward.use_quantization
     )
     
     reformulator = Reformulator(
         model_name=config.reformulator.model_name,
         device=config.device,
-        max_new_tokens=config.reformulator.max_new_tokens
+        max_new_tokens=config.reformulator.max_new_tokens,
+        use_quantization=config.reformulator.use_quantization
     )
     
     env = SearchEnv(
@@ -70,6 +72,12 @@ def setup_components(config: TrainConfig, corpus, train_queries):
 
 
 def train(config: TrainConfig):
+    config.optimize_for_device()
+    
+    print(f"Using device: {config.device}")
+    if config.device == "mps":
+        print("Metal Performance Shaders (MPS) enabled")
+    
     torch.manual_seed(config.seed)
     np.random.seed(config.seed)
     
@@ -210,7 +218,7 @@ def train(config: TrainConfig):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str, default="nfcorpus")
-    parser.add_argument("--device", type=str, default="cuda")
+    parser.add_argument("--device", type=str, default=None, help="cuda, mps, or cpu (auto-detects if not specified)")
     parser.add_argument("--episodes", type=int, default=10000)
     parser.add_argument("--lr", type=float, default=3e-4)
     parser.add_argument("--batch-size", type=int, default=64)

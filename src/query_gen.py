@@ -5,6 +5,7 @@ from typing import List, Dict, Tuple, Optional
 from dataclasses import dataclass
 import random
 from tqdm import tqdm
+from .utils import get_device, get_dtype, optimize_for_metal
 
 
 SINGLE_DOC_PROMPT = """Given this document, generate {n} different search queries that someone might type to find this document. The queries should be natural and diverse.
@@ -43,17 +44,38 @@ class QueryGenerator:
         self,
         model_name: str = "Qwen/Qwen2.5-3B-Instruct",
         device: str = "cuda",
-        queries_per_doc: int = 3
+        queries_per_doc: int = 3,
+        use_quantization: bool = False
     ):
-        self.device = device
+        self.device = get_device(device)
         self.queries_per_doc = queries_per_doc
+        dtype = get_dtype(self.device)
+        
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            torch_dtype=torch.float16,
-            device_map=device,
-            trust_remote_code=True
-        )
+        
+        load_kwargs = {
+            "torch_dtype": dtype,
+            "trust_remote_code": True
+        }
+        
+        if self.device == "mps":
+            load_kwargs["device_map"] = None
+        else:
+            load_kwargs["device_map"] = self.device
+        
+        if use_quantization and self.device != "mps":
+            from transformers import BitsAndBytesConfig
+            load_kwargs["quantization_config"] = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_compute_dtype=dtype
+            )
+        
+        self.model = AutoModelForCausalLM.from_pretrained(model_name, **load_kwargs)
+        
+        if self.device == "mps":
+            self.model = self.model.to(self.device)
+            self.model = optimize_for_metal(self.model, self.device)
+        
         self.model.eval()
     
     def _truncate_text(self, text: str, max_chars: int = 800) -> str:

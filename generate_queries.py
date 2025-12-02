@@ -4,6 +4,7 @@ from pathlib import Path
 from src.config import QueryGenConfig
 from src.query_gen import QueryGenerator
 from src.data import load_beir_dataset, save_query_bank, beir_queries_to_synthetic
+from src.utils import get_device
 
 
 def generate(
@@ -13,13 +14,21 @@ def generate(
     num_multi: int = 200,
     num_adversarial: int = 200
 ):
+    device = get_device(device)
+    print(f"Using device: {device}")
+    
     corpus, queries, qrels = load_beir_dataset(dataset_name)
     
     beir_queries = beir_queries_to_synthetic(queries, qrels)
     
     config = QueryGenConfig()
+    if device == "mps":
+        model_name = config.model_name_mps
+    else:
+        model_name = config.model_name
+    
     generator = QueryGenerator(
-        model_name=config.model_name,
+        model_name=model_name,
         device=device,
         queries_per_doc=config.queries_per_doc
     )

@@ -43,23 +43,31 @@ class EnvConfig:
 @dataclass
 class RewardConfig:
     model_name: str = "Qwen/Qwen2.5-3B-Instruct"
+    model_name_mps: str = "Qwen/Qwen2.5-1.5B-Instruct"
     max_length: int = 512
     batch_size: int = 8
+    batch_size_mps: int = 4
     temperature: float = 0.1
+    use_quantization: bool = False
 
 
 @dataclass
 class ReformulatorConfig:
     model_name: str = "Qwen/Qwen2.5-3B-Instruct"
+    model_name_mps: str = "Qwen/Qwen2.5-1.5B-Instruct"
     max_new_tokens: int = 128
     temperature: float = 0.7
+    use_quantization: bool = False
 
 
 @dataclass
 class QueryGenConfig:
     model_name: str = "Qwen/Qwen2.5-3B-Instruct"
+    model_name_mps: str = "Qwen/Qwen2.5-1.5B-Instruct"
     queries_per_doc: int = 3
     batch_size: int = 4
+    batch_size_mps: int = 2
+    use_quantization: bool = False
 
 
 @dataclass
@@ -80,4 +88,17 @@ class TrainConfig:
     dataset_name: str = "nfcorpus"
     device: str = "cuda"
     seed: int = 42
+    
+    def optimize_for_device(self):
+        from .utils import get_device, get_optimal_batch_size, is_apple_silicon
+        
+        self.device = get_device(self.device)
+        
+        if self.device == "mps" or (self.device == "cpu" and is_apple_silicon()):
+            self.reward.model_name = self.reward.model_name_mps
+            self.reward.batch_size = self.reward.batch_size_mps
+            self.reformulator.model_name = self.reformulator.model_name_mps
+            self.query_gen.model_name = self.query_gen.model_name_mps
+            self.query_gen.batch_size = self.query_gen.batch_size_mps
+            self.ppo.batch_size = get_optimal_batch_size(self.device, self.ppo.batch_size)
 
