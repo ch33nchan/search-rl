@@ -14,10 +14,10 @@ env/
 
 data/
 runs/
-checkpoints/
-*.pt
-*.pth
-*.ckpt
+#checkpoints/
+#*.pt
+#*.pth
+#*.ckpt
 
 .DS_Store
 *.log
