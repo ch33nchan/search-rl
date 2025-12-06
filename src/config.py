@@ -27,7 +27,7 @@ class PPOConfig:
     gae_lambda: float = 0.95
     clip_epsilon: float = 0.2
     value_coef: float = 0.5
-    entropy_coef: float = 0.01
+    entropy_coef: float = 0.05  # Increased from 0.01 to encourage exploration
     max_grad_norm: float = 0.5
     batch_size: int = 64
     epochs_per_update: int = 4
@@ -38,6 +38,7 @@ class PPOConfig:
 class EnvConfig:
     max_steps: int = 5
     reward_scale: float = 1.0
+    step_penalty: float = 0.02  # Small penalty per step to encourage efficiency
 
 
 @dataclass

@@ -57,7 +57,8 @@ def setup_components(config: TrainConfig, corpus, train_queries):
         query_bank=train_queries,
         max_steps=config.env.max_steps,
         top_k=config.retriever.top_k,
-        device=config.device
+        device=config.device,
+        step_penalty=config.env.step_penalty
     )
     
     policy = PolicyNetwork(
@@ -134,6 +135,7 @@ def train(config: TrainConfig):
     evaluator = Evaluator(env, policy, config.device)
     
     global_step = 0
+    action_counts = {0: 0, 1: 0, 2: 0, 3: 0}  # Track action distribution during training
     
     for episode in tqdm(range(config.total_episodes), desc="Training"):
         obs, info = env.reset()
@@ -146,6 +148,7 @@ def train(config: TrainConfig):
         while not done:
             state = policy_state.get_state()
             action, log_prob, value = policy.get_action(state, deterministic=False)
+            action_counts[action] += 1  # Track actions
             
             obs, reward, terminated, truncated, info = env.step(action)
             done = terminated or truncated
@@ -162,12 +165,12 @@ def train(config: TrainConfig):
                 action=action,
                 log_prob=log_prob.item(),
                 value=value.item(),
-                reward=reward if done else 0.0,
+                reward=reward,  # Include step penalty in all rewards
                 done=done
             )
             ppo_trainer.store_transition(transition)
             
-            episode_reward = reward if done else episode_reward
+            episode_reward += reward  # Accumulate all rewards including step penalties
             episode_steps += 1
             global_step += 1
         
@@ -185,6 +188,13 @@ def train(config: TrainConfig):
             if stats:
                 for key, value in stats.items():
                     writer.add_scalar(f"episode/{key}", value, episode)
+            
+            # Log action distribution every 10 episodes
+            total_actions = sum(action_counts.values())
+            if total_actions > 0:
+                for action_id, count in action_counts.items():
+                    writer.add_scalar(f"train/action_{action_id}_frac", count / total_actions, episode)
+                action_counts = {0: 0, 1: 0, 2: 0, 3: 0}  # Reset counts
         
         if episode > 0 and episode % config.eval_interval == 0:
             eval_queries = test_queries[:100]
@@ -226,6 +236,8 @@ def main():
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--log-dir", type=str, default="runs")
     parser.add_argument("--checkpoint-dir", type=str, default="checkpoints")
+    parser.add_argument("--entropy-coef", type=float, default=0.05, help="Entropy coefficient for exploration")
+    parser.add_argument("--step-penalty", type=float, default=0.02, help="Penalty per step to encourage efficiency")
     args = parser.parse_args()
     
     config = TrainConfig(
@@ -238,7 +250,9 @@ def main():
     )
     config.ppo.lr = args.lr
     config.ppo.batch_size = args.batch_size
+    config.ppo.entropy_coef = args.entropy_coef
     config.env.max_steps = args.max_steps
+    config.env.step_penalty = args.step_penalty
     
     train(config)
 

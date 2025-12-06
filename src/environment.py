@@ -35,7 +35,8 @@ class SearchEnv(gym.Env):
         query_bank: List[SyntheticQuery],
         max_steps: int = 5,
         top_k: int = 10,
-        device: str = "cuda"
+        device: str = "cuda",
+        step_penalty: float = 0.0
     ):
         super().__init__()
         
@@ -46,6 +47,7 @@ class SearchEnv(gym.Env):
         self.max_steps = max_steps
         self.top_k = top_k
         self.device = device
+        self.step_penalty = step_penalty
         
         self.action_space = spaces.Discrete(4)
         self.observation_space = spaces.Dict({
@@ -114,7 +116,7 @@ class SearchEnv(gym.Env):
         
         query_embedding = self.retriever.encode_query(self.current_query_str)
         
-        reward = 0.0
+        reward = -self.step_penalty  # Small penalty per step to encourage efficiency
         terminated = False
         truncated = False
         

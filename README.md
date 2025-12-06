@@ -2,6 +2,8 @@
 
 Reinforcement Learning for Agentic Document Retrieval.
 
+> **New to the project?** See [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md) for a comprehensive introduction to the architecture, design decisions, and how everything fits together.
+
 ## Setup
 
 ```bash
