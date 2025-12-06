@@ -157,10 +157,18 @@ class PolicyNetwork(nn.Module):
     def get_action(
         self,
         state: torch.Tensor,
-        deterministic: bool = False
+        deterministic: bool = False,
+        valid_actions: Optional[List[int]] = None
     ) -> Tuple[int, torch.Tensor, torch.Tensor]:
         action_logits = self.policy_head(state)
         value = self.value_head(state).squeeze(-1)
+        
+        # Apply action masking if valid_actions is provided
+        if valid_actions is not None and len(valid_actions) < self.action_dim:
+            mask = torch.full_like(action_logits, float('-inf'))
+            for a in valid_actions:
+                mask[..., a] = 0
+            action_logits = action_logits + mask
         
         dist = Categorical(logits=action_logits)
         

@@ -86,7 +86,10 @@ class Evaluator:
                 
                 while not done:
                     state = policy_state.get_state()
-                    action, _, _ = self.policy.get_action(state, deterministic=deterministic)
+                    valid_actions = self.env.get_valid_actions()
+                    action, _, _ = self.policy.get_action(
+                        state, deterministic=deterministic, valid_actions=valid_actions
+                    )
                     
                     action_counts[action] += 1
                     

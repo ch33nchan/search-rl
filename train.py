@@ -147,7 +147,12 @@ def train(config: TrainConfig):
         
         while not done:
             state = policy_state.get_state()
-            action, log_prob, value = policy.get_action(state, deterministic=False)
+            
+            # Get valid actions and apply masking
+            valid_actions = env.get_valid_actions()
+            action, log_prob, value = policy.get_action(
+                state, deterministic=False, valid_actions=valid_actions
+            )
             action_counts[action] += 1  # Track actions
             
             obs, reward, terminated, truncated, info = env.step(action)

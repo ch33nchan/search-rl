@@ -72,6 +72,14 @@ class SearchEnv(gym.Env):
         self.current_doc_ids: List[str] = []
         self.current_result_embedding: np.ndarray = np.zeros(retriever.embedding_dim)
         self.terminated: bool = False
+        self.has_searched: bool = False  # Track if agent has searched at least once
+    
+    def get_valid_actions(self) -> List[int]:
+        """Return list of valid actions based on current state."""
+        if not self.has_searched:
+            # Must search first before reformulating or terminating
+            return [ACTION_SEARCH]
+        return [ACTION_SEARCH, ACTION_NARROW, ACTION_BROAD, ACTION_TERMINATE]
     
     def reset(
         self,
@@ -93,6 +101,7 @@ class SearchEnv(gym.Env):
         self.current_doc_ids = []
         self.current_result_embedding = np.zeros(self.retriever.embedding_dim)
         self.terminated = False
+        self.has_searched = False
         
         query_embedding = self.retriever.encode_query(self.current_query_str)
         
@@ -127,7 +136,7 @@ class SearchEnv(gym.Env):
             self.current_result_embedding = self.retriever.get_aggregated_embedding(
                 result.doc_ids[:3]
             )
-        
+            self.has_searched = True        
         elif action == ACTION_NARROW:
             if self.current_docs:
                 new_query = self.reformulator.narrow(self.current_query_str, self.current_docs)
@@ -150,9 +159,10 @@ class SearchEnv(gym.Env):
                     self.current_docs,
                     k=self.top_k
                 )
-                reward = ndcg
+                reward = ndcg + reward  # Add nDCG to step penalty (reward is negative)
             else:
-                reward = 0.0
+                # Penalize terminating without any search results
+                reward = -0.5  # Strong penalty for empty results
         
         step_info = StepInfo(
             query=self.current_query_str,
