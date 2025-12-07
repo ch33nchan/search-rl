@@ -114,6 +114,38 @@ def train(config: TrainConfig):
     
     train_queries, test_queries = split_queries(all_queries, train_ratio=0.8, seed=config.seed)
     
+    # Pre-compute query difficulty if curriculum learning is enabled
+    hard_queries = []
+    easy_queries = []
+    if config.curriculum.enabled:
+        print("Computing query difficulty for curriculum learning...")
+        temp_retriever = Retriever(
+            model_name=config.retriever.model_name,
+            device=config.device
+        )
+        index_path = Path("data") / config.dataset_name / "index"
+        if index_path.exists():
+            temp_retriever.load_index(index_path, corpus)
+        else:
+            temp_retriever.build_index(corpus)
+        
+        # Compute single-pass nDCG for each query to determine difficulty
+        for q in tqdm(train_queries, desc="Computing difficulty"):
+            result = temp_retriever.search(q.query, config.retriever.top_k)
+            # Simple heuristic: check if relevant docs are in top results
+            retrieved_set = set(result.doc_ids)
+            relevant_set = set(q.relevant_doc_ids)
+            recall = len(retrieved_set & relevant_set) / max(len(relevant_set), 1)
+            q.difficulty = recall  # Higher = easier
+            
+            if recall < config.curriculum.hard_query_threshold:
+                hard_queries.append(q)
+            else:
+                easy_queries.append(q)
+        
+        print(f"Hard queries: {len(hard_queries)}, Easy queries: {len(easy_queries)}")
+        del temp_retriever  # Free memory
+    
     retriever, reward_model, reformulator, env, policy = setup_components(
         config, corpus, train_queries
     )
@@ -138,7 +170,19 @@ def train(config: TrainConfig):
     action_counts = {0: 0, 1: 0, 2: 0, 3: 0}  # Track action distribution during training
     
     for episode in tqdm(range(config.total_episodes), desc="Training"):
-        obs, info = env.reset()
+        # Curriculum learning: sample from hard queries more often
+        selected_query = None
+        if config.curriculum.enabled and episode >= config.curriculum.warmup_episodes and hard_queries:
+            if np.random.random() < config.curriculum.hard_query_ratio:
+                selected_query = np.random.choice(hard_queries)
+            elif easy_queries:
+                selected_query = np.random.choice(easy_queries)
+        
+        if selected_query is not None:
+            obs, info = env.reset(options={"query": selected_query})
+        else:
+            obs, info = env.reset()
+        
         policy_state = PolicyState(config.policy.hidden_dim, config.device)
         
         episode_reward = 0
@@ -243,6 +287,9 @@ def main():
     parser.add_argument("--checkpoint-dir", type=str, default="checkpoints")
     parser.add_argument("--entropy-coef", type=float, default=0.05, help="Entropy coefficient for exploration")
     parser.add_argument("--step-penalty", type=float, default=0.02, help="Penalty per step to encourage efficiency")
+    parser.add_argument("--curriculum", action="store_true", help="Enable curriculum learning (focus on hard queries)")
+    parser.add_argument("--hard-threshold", type=float, default=0.6, help="Recall threshold for hard queries")
+    parser.add_argument("--hard-ratio", type=float, default=0.7, help="Fraction of hard queries in training")
     args = parser.parse_args()
     
     config = TrainConfig(
@@ -258,6 +305,9 @@ def main():
     config.ppo.entropy_coef = args.entropy_coef
     config.env.max_steps = args.max_steps
     config.env.step_penalty = args.step_penalty
+    config.curriculum.enabled = args.curriculum
+    config.curriculum.hard_query_threshold = args.hard_threshold
+    config.curriculum.hard_query_ratio = args.hard_ratio
     
     train(config)
 

@@ -42,6 +42,15 @@ class EnvConfig:
 
 
 @dataclass
+class CurriculumConfig:
+    """Curriculum learning settings to focus on hard queries."""
+    enabled: bool = False
+    hard_query_threshold: float = 0.6  # nDCG below this = hard query
+    hard_query_ratio: float = 0.7  # Fraction of hard queries in training batch
+    warmup_episodes: int = 1000  # Start curriculum after this many episodes
+
+
+@dataclass
 class RewardConfig:
     model_name: str = "Qwen/Qwen2.5-3B-Instruct"
     model_name_mps: str = "Qwen/Qwen2.5-1.5B-Instruct"
@@ -80,6 +89,7 @@ class TrainConfig:
     reward: RewardConfig = field(default_factory=RewardConfig)
     reformulator: ReformulatorConfig = field(default_factory=ReformulatorConfig)
     query_gen: QueryGenConfig = field(default_factory=QueryGenConfig)
+    curriculum: CurriculumConfig = field(default_factory=CurriculumConfig)
     
     total_episodes: int = 10000
     eval_interval: int = 500

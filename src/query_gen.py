@@ -2,10 +2,18 @@ import torch
 import numpy as np
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from typing import List, Dict, Tuple, Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import random
 from tqdm import tqdm
 from .utils import get_device, get_dtype, optimize_for_metal
+
+
+@dataclass
+class SyntheticQuery:
+    query: str
+    relevant_doc_ids: List[str]
+    query_type: str = "single"
+    difficulty: Optional[float] = None  # nDCG score from single-pass (lower = harder)
 
 
 SINGLE_DOC_PROMPT = """Given this document, generate {n} different search queries that someone might type to find this document. The queries should be natural and diverse.
@@ -30,13 +38,6 @@ Document title: {title}
 Document text: {text}
 
 Generate one query that requires semantic understanding. Only output the query, nothing else."""
-
-
-@dataclass
-class SyntheticQuery:
-    query: str
-    relevant_doc_ids: List[str]
-    query_type: str
 
 
 class QueryGenerator:
