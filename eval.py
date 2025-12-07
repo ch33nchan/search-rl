@@ -68,13 +68,15 @@ def evaluate(
     reward_model = RewardModel(
         model_name=config.reward.model_name,
         device=device,
-        max_length=config.reward.max_length
+        max_length=config.reward.max_length,
+        gpu_id=config.reward.gpu_id
     )
     
     reformulator = Reformulator(
         model_name=config.reformulator.model_name,
         device=device,
-        max_new_tokens=config.reformulator.max_new_tokens
+        max_new_tokens=config.reformulator.max_new_tokens,
+        gpu_id=config.reformulator.gpu_id
     )
     
     env = SearchEnv(

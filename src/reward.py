@@ -38,10 +38,12 @@ class RewardModel:
         model_name: str = "Qwen/Qwen2.5-3B-Instruct",
         device: str = "cuda",
         max_length: int = 512,
-        use_quantization: bool = False
+        use_quantization: bool = False,
+        gpu_id: int = 0  # Specific GPU to use
     ):
         self.device = get_device(device)
         self.max_length = max_length
+        self.gpu_id = gpu_id
         dtype = get_dtype(self.device)
         
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
@@ -53,6 +55,9 @@ class RewardModel:
         
         if self.device == "mps":
             load_kwargs["device_map"] = None
+        elif self.device == "cuda":
+            # Use specific GPU
+            load_kwargs["device_map"] = f"cuda:{gpu_id}"
         else:
             load_kwargs["device_map"] = self.device
         
@@ -70,6 +75,10 @@ class RewardModel:
             self.model = optimize_for_metal(self.model, self.device)
         
         self.model.eval()
+        
+        # Update device string for tensor operations
+        if self.device == "cuda":
+            self.device = f"cuda:{gpu_id}"
     
     def _truncate_text(self, text: str, max_chars: int = 500) -> str:
         if len(text) > max_chars:

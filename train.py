@@ -36,18 +36,22 @@ def setup_components(config: TrainConfig, corpus, train_queries):
         retriever.build_index(corpus)
         retriever.save_index(index_path)
     
+    # Multi-GPU: Put reward model on GPU 0
     reward_model = RewardModel(
         model_name=config.reward.model_name,
         device=config.device,
         max_length=config.reward.max_length,
-        use_quantization=config.reward.use_quantization
+        use_quantization=config.reward.use_quantization,
+        gpu_id=config.reward.gpu_id
     )
     
+    # Multi-GPU: Put reformulator on GPU 1
     reformulator = Reformulator(
         model_name=config.reformulator.model_name,
         device=config.device,
         max_new_tokens=config.reformulator.max_new_tokens,
-        use_quantization=config.reformulator.use_quantization
+        use_quantization=config.reformulator.use_quantization,
+        gpu_id=config.reformulator.gpu_id
     )
     
     env = SearchEnv(
@@ -290,6 +294,8 @@ def main():
     parser.add_argument("--curriculum", action="store_true", help="Enable curriculum learning (focus on hard queries)")
     parser.add_argument("--hard-threshold", type=float, default=0.6, help="Recall threshold for hard queries")
     parser.add_argument("--hard-ratio", type=float, default=0.7, help="Fraction of hard queries in training")
+    parser.add_argument("--reward-gpu", type=int, default=0, help="GPU ID for reward model")
+    parser.add_argument("--reformulator-gpu", type=int, default=1, help="GPU ID for reformulator (use different GPU for parallelism)")
     args = parser.parse_args()
     
     config = TrainConfig(
@@ -308,6 +314,8 @@ def main():
     config.curriculum.enabled = args.curriculum
     config.curriculum.hard_query_threshold = args.hard_threshold
     config.curriculum.hard_query_ratio = args.hard_ratio
+    config.reward.gpu_id = args.reward_gpu
+    config.reformulator.gpu_id = args.reformulator_gpu
     
     train(config)
 

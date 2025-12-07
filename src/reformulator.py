@@ -30,10 +30,12 @@ class Reformulator:
         model_name: str = "Qwen/Qwen2.5-3B-Instruct",
         device: str = "cuda",
         max_new_tokens: int = 128,
-        use_quantization: bool = False
+        use_quantization: bool = False,
+        gpu_id: int = 1  # Specific GPU to use (default to second GPU)
     ):
         self.device = get_device(device)
         self.max_new_tokens = max_new_tokens
+        self.gpu_id = gpu_id
         dtype = get_dtype(self.device)
         
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
@@ -45,6 +47,9 @@ class Reformulator:
         
         if self.device == "mps":
             load_kwargs["device_map"] = None
+        elif self.device == "cuda":
+            # Use specific GPU
+            load_kwargs["device_map"] = f"cuda:{gpu_id}"
         else:
             load_kwargs["device_map"] = self.device
         
@@ -62,6 +67,10 @@ class Reformulator:
             self.model = optimize_for_metal(self.model, self.device)
         
         self.model.eval()
+        
+        # Update device string for tensor operations
+        if self.device == "cuda":
+            self.device = f"cuda:{gpu_id}"
     
     def _format_results(self, documents: List[Dict], max_docs: int = 3) -> str:
         result_strs = []

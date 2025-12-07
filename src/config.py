@@ -59,6 +59,7 @@ class RewardConfig:
     batch_size_mps: int = 4
     temperature: float = 0.1
     use_quantization: bool = False
+    gpu_id: int = 0  # GPU for reward model
 
 
 @dataclass
@@ -68,6 +69,7 @@ class ReformulatorConfig:
     max_new_tokens: int = 128
     temperature: float = 0.7
     use_quantization: bool = False
+    gpu_id: int = 1  # GPU for reformulator (separate from reward model)
 
 
 @dataclass
