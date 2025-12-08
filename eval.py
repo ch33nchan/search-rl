@@ -69,7 +69,8 @@ def evaluate(
         model_name=config.reward.model_name,
         device=device,
         max_length=config.reward.max_length,
-        gpu_id=config.reward.gpu_id
+        gpu_id=config.reward.gpu_id,
+        batch_size=config.reward.batch_size
     )
     
     reformulator = Reformulator(

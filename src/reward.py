@@ -39,14 +39,19 @@ class RewardModel:
         device: str = "cuda",
         max_length: int = 512,
         use_quantization: bool = False,
-        gpu_id: int = 0  # Specific GPU to use
+        gpu_id: int = 0,  # Specific GPU to use
+        batch_size: int = 8
     ):
         self.device = get_device(device)
         self.max_length = max_length
         self.gpu_id = gpu_id
+        self.batch_size = batch_size
         dtype = get_dtype(self.device)
         
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+        if self.tokenizer.pad_token is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
+            self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
         
         load_kwargs = {
             "torch_dtype": dtype,
@@ -124,9 +129,50 @@ class RewardModel:
     
     def score_batch(self, query: str, documents: List[Dict]) -> np.ndarray:
         scores = []
+        prompts = []
+        
         for doc in documents:
-            score = self.score_single(query, doc)
-            scores.append(score)
+            doc_text = self._truncate_text(
+                f"{doc.get('title', '')} {doc.get('text', '')}"
+                if isinstance(doc, dict) else doc
+            )
+            prompt = JUDGE_PROMPT.format(query=query, document=doc_text)
+            messages = [{"role": "user", "content": prompt}]
+            text = self.tokenizer.apply_chat_template(
+                messages,
+                tokenize=False,
+                add_generation_prompt=True
+            )
+            prompts.append(text)
+            
+        # Process in batches
+        for i in range(0, len(prompts), self.batch_size):
+            batch_prompts = prompts[i:i + self.batch_size]
+            
+            inputs = self.tokenizer(
+                batch_prompts, 
+                return_tensors="pt", 
+                padding=True, 
+                truncation=True, 
+                max_length=self.max_length
+            )
+            inputs = {k: v.to(self.device) for k, v in inputs.items()}
+            
+            with torch.no_grad():
+                outputs = self.model.generate(
+                    **inputs,
+                    max_new_tokens=10,
+                    temperature=0.1,
+                    do_sample=True,
+                    pad_token_id=self.tokenizer.pad_token_id
+                )
+            
+            # Decode responses
+            input_len = inputs['input_ids'].shape[1]
+            for output in outputs:
+                response = self.tokenizer.decode(output[input_len:], skip_special_tokens=True)
+                scores.append(self._parse_score(response))
+                
         return np.array(scores)
     
     def compute_ndcg(

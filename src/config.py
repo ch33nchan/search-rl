@@ -29,9 +29,9 @@ class PPOConfig:
     value_coef: float = 0.5
     entropy_coef: float = 0.05  # Increased from 0.01 to encourage exploration
     max_grad_norm: float = 0.5
-    batch_size: int = 64
+    batch_size: int = 256  # Increased for H100 (was 64)
     epochs_per_update: int = 4
-    rollout_steps: int = 2048
+    rollout_steps: int = 4096  # Increased for H100 (was 2048)
 
 
 @dataclass
@@ -55,7 +55,7 @@ class RewardConfig:
     model_name: str = "Qwen/Qwen2.5-3B-Instruct"
     model_name_mps: str = "Qwen/Qwen2.5-1.5B-Instruct"
     max_length: int = 512
-    batch_size: int = 8
+    batch_size: int = 32  # Increased for H100 (was 8)
     batch_size_mps: int = 4
     temperature: float = 0.1
     use_quantization: bool = False
@@ -77,7 +77,7 @@ class QueryGenConfig:
     model_name: str = "Qwen/Qwen2.5-3B-Instruct"
     model_name_mps: str = "Qwen/Qwen2.5-1.5B-Instruct"
     queries_per_doc: int = 3
-    batch_size: int = 4
+    batch_size: int = 32  # Increased for H100 (was 4)
     batch_size_mps: int = 2
     use_quantization: bool = False
 

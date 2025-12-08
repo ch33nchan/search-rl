@@ -42,7 +42,8 @@ def setup_components(config: TrainConfig, corpus, train_queries):
         device=config.device,
         max_length=config.reward.max_length,
         use_quantization=config.reward.use_quantization,
-        gpu_id=config.reward.gpu_id
+        gpu_id=config.reward.gpu_id,
+        batch_size=config.reward.batch_size
     )
     
     # Multi-GPU: Put reformulator on GPU 1
