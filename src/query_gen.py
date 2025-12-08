@@ -52,7 +52,7 @@ class QueryGenerator:
         self.queries_per_doc = queries_per_doc
         dtype = get_dtype(self.device)
         
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True, padding_side='left')
         
         load_kwargs = {
             "torch_dtype": dtype,
