@@ -38,7 +38,7 @@ class PPOConfig:
 class EnvConfig:
     max_steps: int = 5
     reward_scale: float = 1.0
-    step_penalty: float = 0.02  # Small penalty per step to encourage efficiency
+    step_penalty: float = 0.0  # Removed penalty to encourage reformulation exploration
 
 
 @dataclass

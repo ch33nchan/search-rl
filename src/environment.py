@@ -142,12 +142,28 @@ class SearchEnv(gym.Env):
                 new_query = self.reformulator.narrow(self.current_query_str, self.current_docs)
                 self.current_query_str = new_query
                 query_embedding = self.retriever.encode_query(self.current_query_str)
+                
+                # Auto-search after reformulation
+                result = self.retriever.search(self.current_query_str, self.top_k)
+                self.current_docs = result.documents
+                self.current_doc_ids = result.doc_ids
+                self.current_result_embedding = self.retriever.get_aggregated_embedding(
+                    result.doc_ids[:3]
+                )
         
         elif action == ACTION_BROAD:
             if self.current_docs:
                 new_query = self.reformulator.broaden(self.current_query_str, self.current_docs)
                 self.current_query_str = new_query
                 query_embedding = self.retriever.encode_query(self.current_query_str)
+                
+                # Auto-search after reformulation
+                result = self.retriever.search(self.current_query_str, self.top_k)
+                self.current_docs = result.documents
+                self.current_doc_ids = result.doc_ids
+                self.current_result_embedding = self.retriever.get_aggregated_embedding(
+                    result.doc_ids[:3]
+                )
         
         elif action == ACTION_TERMINATE:
             terminated = True
