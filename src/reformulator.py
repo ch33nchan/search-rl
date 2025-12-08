@@ -48,6 +48,12 @@ class Reformulator:
         if self.device == "mps":
             load_kwargs["device_map"] = None
         elif self.device == "cuda":
+            # Check if GPU ID is valid
+            if gpu_id >= torch.cuda.device_count():
+                raise ValueError(
+                    f"Invalid gpu_id {gpu_id}. Only {torch.cuda.device_count()} GPUs are visible. "
+                    "If using CUDA_VISIBLE_DEVICES, remember that indices are remapped to 0, 1, etc."
+                )
             # Use specific GPU
             load_kwargs["device_map"] = f"cuda:{gpu_id}"
         else:
