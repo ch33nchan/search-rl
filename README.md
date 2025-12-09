@@ -1,8 +1,8 @@
 # SearchRL
 
-> Reinforcement learning for iterative document retrieval with query reformulation.
+RL-driven agentic search with learned query reformulation. This project explores training policies for multi-step retrieval instead of single-pass embedding lookup, optimizing retrieval quality through sequential decision-making.
 
-An RL agent learns to search by making sequential decisions: search, narrow query, broaden query, or terminate. Trained using PPO on BEIR datasets to optimize nDCG@10.
+**Core Idea**: Instead of encode-once-retrieve, an agent iteratively refines queries and searches until it finds optimal results. Trained with PPO on dense retrieval + LLM-as-judge rewards.
 
 ## Quick Start
 
@@ -22,16 +22,20 @@ python eval.py --checkpoint checkpoints/policy_final.pt --dataset fiqa --num-que
 tensorboard --logdir runs
 ```
 
-## Overview
+## Problem
 
-Traditional retrieval does single-pass search and returns results. SearchRL treats retrieval as a sequential decision problem where an agent can:
+Single-pass dense retrieval fails on ambiguous, underspecified, or complex queries. Traditional systems encode query → similarity search → return top-k. No mechanism to refine, explore alternatives, or adapt based on initial results.
 
-- **Search** (A0): Execute retrieval with current query
-- **Narrow** (A1): Reformulate query to be more specific
-- **Broaden** (A2): Reformulate query to be more general  
-- **Terminate** (A3): End episode and compute reward
+## Solution
 
-The agent uses a GRU-based policy network trained with PPO, learning from LLM-judged relevance scores (nDCG@10).
+Treat retrieval as an MDP. Agent observes (query, retrieved docs) and chooses actions:
+
+- **Search** (A0): Execute dense retrieval with current query
+- **Narrow** (A1): LLM reformulates query to be more specific
+- **Broaden** (A2): LLM reformulates query to be more general
+- **Terminate** (A3): Commit to current results
+
+Policy network (GRU over search trajectory) trained with PPO to maximize nDCG@10 from LLM-judged relevance. Learns when to reformulate vs when single-pass suffices.
 
 ## Architecture
 
@@ -109,31 +113,25 @@ Supported BEIR datasets:
 - **arguana** - Argumentative texts
 - **scidocs** - Citation prediction
 
-## Key Features
+## Technical Highlights
 
-### Action Masking
-Agent must search before terminating or reformulating, preventing degenerate policies.
+**Action Masking**: Prevents degenerate policies (must search before terminate/reformulate).
 
-### Curriculum Learning
-Focus training on hard queries (low single-pass recall) to learn when reformulation helps.
+**Curriculum Learning**: Pre-compute query difficulty, oversample hard queries (low single-pass recall) after warmup.
 
-### Multi-GPU Support
-Run reward model and reformulator on separate GPUs for 2x speedup.
+**Multi-GPU Pipeline**: Reward model (GPU0) and reformulator (GPU1) run in parallel during rollouts.
 
-### Device Support
-Automatic detection: `cuda > mps > cpu`
+**Reward Shaping**: Step penalties, empty termination penalties, action-masking to guide exploration.
 
-## Results
+**Evaluation Framework**: Policy vs single-pass vs always-reformulate baselines, stratified by query difficulty.
 
-Training on FIQA (10k episodes):
-- Agent learns to use narrow/broaden actions for ambiguous queries
-- Outperforms single-pass baseline on hard queries
-- Properly learns when NOT to reformulate
+## Key Results
 
-Training on NFCorpus:
-- Agent correctly learns single-pass is optimal
-- Reformulation hurts performance on this dataset
-- Validates that RL is learning meaningful policy
+**FIQA (Financial Q&A)**: Agent learns to reformulate on ambiguous queries, outperforms single-pass on hard queries (recall < 0.6).
+
+**NFCorpus (Medical)**: Agent learns single-pass is optimal, never uses reformulation. Reformulation actually hurts performance (-0.07 nDCG). Policy correctly adapts to dataset characteristics.
+
+**Takeaway**: RL agent learns dataset-specific optimal search strategies rather than blindly applying reformulation heuristics.
 
 ## Configuration
 
@@ -158,17 +156,18 @@ hard_query_ratio = 0.7
 warmup_episodes = 1000
 ```
 
-## Project Status
+## Future Directions
 
-See `project_status.md` for detailed experiment history and results.
+- Scale to web-scale indices (billions of documents)
+- Replace LLM reformulator with learned query encoder
+- End-to-end training: jointly train retriever + policy
+- Multi-hop reasoning over retrieved documents
+- RLAIF pipeline for preference learning on search quality
 
-## Requirements
+## Technical Details
 
-- Python 3.10+
-- PyTorch 2.1+
-- CUDA 11.8+ (optional, for GPU)
-- Transformers, Sentence-Transformers, FAISS, BEIR
+Full experiment history, hyperparameter sweeps, ablations, and failure modes documented in `project_status.md`.
 
-## License
+## Stack
 
-MIT
+Python 3.10+ | PyTorch 2.1+ | CUDA 11.8+ | Transformers | Sentence-Transformers | FAISS | BEIR

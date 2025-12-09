@@ -1,14 +1,16 @@
-# SearchRL Project Status
+# SearchRL: Experiment Log
 
-**Last Updated**: December 8, 2025
+**Last Updated**: December 10, 2025
 
-## Project Overview
+## Summary
 
-SearchRL is a reinforcement learning system that learns how to iteratively search and reformulate queries to improve document retrieval. Instead of single-pass retrieval, an RL agent makes sequential decisions (search, narrow, broaden, terminate) to optimize nDCG@10.
+RL agent for multi-step document retrieval. Core question: Can we learn when query reformulation helps vs when single-pass dense retrieval suffices?
 
-## Current Status: Training on FIQA Dataset
+Result: Agent learns dataset-specific strategies. On simple queries (NFCorpus), learns single-pass is optimal. On ambiguous queries (FIQA), learns to reformulate. No hardcoded heuristics, pure policy learning from rewards.
 
-Training is currently running on the FIQA (Financial Q&A) dataset after experiments on NFCorpus showed that reformulation doesn't help on that dataset.
+## Status
+
+FIQA training completed (10k episodes, multi-GPU). Checkpoints available. NFCorpus experiments validated agent learns correct degenerate policy when reformulation hurts.
 
 ---
 
